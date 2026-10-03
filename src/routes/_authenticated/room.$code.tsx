@@ -489,26 +489,54 @@ function ClueSteps({ current }: { current: number }) {
 
 function ClueBoard({ clue, current }: { clue: ClueData; current: number }) {
   const people: { k: keyof ClueData; label: string; n: number }[] = [
-    { k: "director", label: "Director", n: 2 },
-    { k: "heroine", label: "Heroine", n: 3 },
-    { k: "hero", label: "Hero", n: 4 },
+    { k: "director", label: "Director / இயக்குநர்", n: 2 },
+    { k: "heroine", label: "Heroine / கதாநாயகி", n: 3 },
+    { k: "hero", label: "Hero / கதாநாயகன்", n: 4 },
   ];
+
   return (
     <div className="mt-6 space-y-5">
+      {/* STORY CLUE */}
       <div
-        className={`rounded-md border p-5 sm:p-7 ${current === 1 ? "border-primary/40 bg-background/80" : "border-border bg-background/50"}`}
+        className={`rounded-md border p-5 sm:p-7 ${
+          current === 1
+            ? "border-primary/40 bg-background/80"
+            : "border-border bg-background/50"
+        }`}
       >
-        <p className="max-w-3xl text-lg font-medium leading-relaxed sm:text-2xl">“{clue.story}”</p>
-        {clue.story_ta && (
+        {/* English */}
+        <div>
+          <p className="mb-2 font-display text-[10px] font-bold uppercase tracking-[0.25em] text-primary">
+            Story · English
+          </p>
+
+          <p className="max-w-3xl text-lg font-medium leading-relaxed sm:text-2xl">
+            “{clue.story || "Story clue unavailable"}”
+          </p>
+        </div>
+
+        {/* Tamil */}
+        <div className="mt-5 border-t border-border/60 pt-4">
+          <p
+            className="mb-2 font-display text-[10px] font-bold uppercase tracking-[0.25em] text-primary"
+            lang="ta"
+          >
+            கதை · தமிழ்
+          </p>
+
           <p
             lang="ta"
-            className="mt-3 max-w-3xl text-base leading-relaxed text-foreground/80 sm:text-xl"
-            style={{ fontFamily: "'Noto Sans Tamil', var(--font-sans)" }}
+            className="max-w-3xl text-base leading-relaxed text-foreground/90 sm:text-xl"
+            style={{
+              fontFamily: "'Noto Sans Tamil', var(--font-sans)",
+            }}
           >
-            “{clue.story_ta}”
+            “{clue.story_ta || "தமிழ் கதை குறிப்பு கிடைக்கவில்லை"}”
           </p>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
+        </div>
+
+        {/* Genres */}
+        <div className="mt-4 flex flex-wrap gap-2">
           {clue.genres?.map((g) => (
             <span
               key={g}
@@ -518,6 +546,8 @@ function ClueBoard({ clue, current }: { clue: ClueData; current: number }) {
             </span>
           ))}
         </div>
+
+        {/* Trivia */}
         {clue.trivia && clue.trivia.length > 0 && (
           <ul
             className="mt-4 space-y-1.5 border-t border-border pt-3"
@@ -525,10 +555,12 @@ function ClueBoard({ clue, current }: { clue: ClueData; current: number }) {
           >
             {clue.trivia.map((t, i) => (
               <li
-                key={t}
-                className={`flex gap-2 text-sm text-foreground/80 sm:text-base ${i === clue.trivia!.length - 1 ? "fade-slide" : ""}`}
+                key={`${t}-${i}`}
+                className={`flex gap-2 text-sm text-foreground/80 sm:text-base ${
+                  i === clue.trivia!.length - 1 ? "fade-slide" : ""
+                }`}
               >
-                <span className="font-display text-[10px] font-bold uppercase leading-6 text-primary">
+                <span className="shrink-0 font-display text-[10px] font-bold uppercase leading-6 text-primary">
                   Trivia
                 </span>
                 <span>{t}</span>
@@ -537,27 +569,36 @@ function ClueBoard({ clue, current }: { clue: ClueData; current: number }) {
           </ul>
         )}
       </div>
+
+      {/* PEOPLE CLUES */}
       <div className="grid grid-cols-3 gap-3">
         {people.map(({ k, label, n }) => (
           <PersonCard
             key={k}
             name={clue[k] as string | undefined}
-            photo={clue[`${k}_photo` as keyof ClueData] as string | undefined}
+            photo={
+              clue[`${k}_photo` as keyof ClueData] as string | undefined
+            }
             label={label}
             n={n}
             active={current === n}
           />
         ))}
       </div>
+
+      {/* PUNCH DIALOGUE */}
       {clue.punch && current >= 4 && (
         <blockquote className="rise-in rounded-md border border-primary/40 bg-primary/5 p-4 text-center sm:p-5">
           <p className="font-display text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
-            Punch dialogue
+            Punch Dialogue · பஞ்ச் டயலாக்
           </p>
+
           <p
             lang="ta"
             className="mt-2 text-lg font-semibold leading-relaxed sm:text-xl"
-            style={{ fontFamily: "'Noto Sans Tamil', var(--font-sans)" }}
+            style={{
+              fontFamily: "'Noto Sans Tamil', var(--font-sans)",
+            }}
           >
             “{clue.punch}”
           </p>
@@ -580,36 +621,71 @@ function PersonCard({
   n: number;
   active: boolean;
 }) {
-  const wikiImg = usePersonImage(photo ? undefined : name);
-  const img = tmdbImage(photo, "w342") ?? wikiImg;
+  /*
+   * Try the supplied TMDB photo first.
+   * If unavailable, try the existing person-image helper.
+   */
+  const wikiImg = usePersonImage(name);
+
+  const img =
+    tmdbImage(photo, "w500") ??
+    wikiImg ??
+    undefined;
+
   if (!name) {
     return (
       <div className="flex aspect-[3/4] flex-col items-center justify-center rounded-xl border border-dashed border-border bg-background/40 text-center">
-        <span className="font-display text-3xl text-muted-foreground/40">?</span>
+        <span className="font-display text-3xl text-muted-foreground/40">
+          ?
+        </span>
+
         <p className="mt-2 text-[10px] uppercase tracking-[0.25em] text-muted-foreground/60">
           Clue {n}
         </p>
       </div>
     );
   }
+
   return (
     <div
-      className={`relative aspect-[3/4] overflow-hidden rounded-xl border transition-all duration-500 ${active ? "border-primary shadow-[var(--shadow-gold)] animate-scale-in" : "border-primary/30"}`}
+      className={`relative aspect-[3/4] overflow-hidden rounded-xl border transition-all duration-500 ${
+        active
+          ? "border-primary shadow-[var(--shadow-gold)] animate-scale-in"
+          : "border-primary/30"
+      }`}
     >
       {img ? (
         <img
           src={img}
-          alt={label}
+          alt={`${label}: ${name}`}
+          loading="lazy"
           className="absolute inset-0 h-full w-full object-cover object-top"
+          onError={(e) => {
+            /*
+             * If the external image fails, hide the broken image
+             * instead of showing a broken-image icon.
+             */
+            e.currentTarget.style.display = "none";
+          }}
         />
       ) : (
         <div className="absolute inset-0 grid place-items-center bg-gradient-to-b from-secondary/60 to-card">
-          <Avatar name={name} size={56} gold={active} />
+          <Avatar
+            name={name}
+            size={56}
+            gold={active}
+          />
         </div>
       )}
+
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/80 to-transparent p-2 pt-8 text-center">
-        <p className="text-[9px] uppercase tracking-[0.25em] text-primary">{label}</p>
-        <p className="font-display text-xs font-bold leading-tight sm:text-sm">{name}</p>
+        <p className="text-[9px] uppercase tracking-[0.25em] text-primary">
+          {label}
+        </p>
+
+        <p className="font-display text-xs font-bold leading-tight sm:text-sm">
+          {name}
+        </p>
       </div>
     </div>
   );
