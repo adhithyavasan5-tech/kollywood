@@ -1,11 +1,11 @@
-export const PLAYER_ID_RE = /^[a-z0-9_]{3,20}$/;
+export const PLAYER_ID_RE = /^[A-Za-z0-9_]{3,20}$/;
 
 export function normalizePlayerId(id: string) {
   return id.trim().toLowerCase();
 }
 
 export function playerEmail(id: string) {
-  return `${normalizePlayerId(id)}@players.kollywoodclash.app`;
+  return `${normalizePlayerId(id)}@players.kollywoodclash.com`;
 }
 
 export function passwordProblem(pw: string): string | null {
