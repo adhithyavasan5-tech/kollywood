@@ -418,7 +418,7 @@ function Game({
     );
   }
 
-  const total = room.phase === "clue" ? 25 : room.phase === "answer" ? 12 : 5;
+  const total = room.phase === "clue" ? 20 : room.phase === "answer" ? 20 : 5;
 
   return (
     <section className="mx-auto grid max-w-7xl gap-4 px-3 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -436,20 +436,34 @@ function Game({
         ) : (
           <>
             <div className="panel stage-grid overflow-hidden p-5 sm:p-7">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="font-display text-xs font-bold uppercase text-accent">
-                    Now showing · Clue {String(room.clue).padStart(2, "0")}
-                  </p>
-                  <h3 className="mt-1 font-display text-2xl font-bold sm:text-3xl">
-                    {["", "STORY", "DIRECTOR", "HEROINE", "HERO"][room.clue]}
-                  </h3>
-                </div>
-                <TimerRing remaining={remaining} total={total} danger={room.phase !== "clue"} />
-              </div>
-              <ClueBoard clue={clue} current={room.clue} />
-            </div>
+  <div className="flex items-start justify-between gap-4">
+    <div className="min-w-0">
+      <p className="font-display text-xs font-bold uppercase text-accent">
+        Now showing · Clue {String(room.clue).padStart(2, "0")}
+      </p>
 
+      <h3 className="mt-1 font-display text-2xl font-bold sm:text-3xl">
+        {["", "STORY", "DIRECTOR", "HEROINE", "HERO"][room.clue]}
+      </h3>
+    </div>
+
+    <div className="flex shrink-0 flex-col items-center">
+      <TimerRing
+        remaining={remaining}
+        total={total}
+        danger={room.phase !== "clue"}
+      />
+
+      {room.phase === "answer" && (
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.2em] text-destructive">
+          Answer Timer
+        </p>
+      )}
+    </div>
+  </div>
+
+  <ClueBoard clue={clue} current={room.clue} />
+</div>
             <ActionZone
               room={room}
               meId={meId}
