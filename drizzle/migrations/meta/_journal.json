@@ -1,0 +1,97 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1790954569412,
+      "tag": "0000_kollywood_clash_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790955242616,
+      "tag": "0001_answer_time_12s",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790956613373,
+      "tag": "0002_movie_reveal_posters",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1790960298629,
+      "tag": "0003_tmdb_movie_pool",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790960539721,
+      "tag": "0004_actor_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790960684968,
+      "tag": "0005_lock_match_test",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790960825093,
+      "tag": "0006_trivia_clues_and_cron",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790960895303,
+      "tag": "0007_cron_config_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790961279289,
+      "tag": "0008_easy_popular_picks",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790961409387,
+      "tag": "0009_era_familiarity_picks",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790961590500,
+      "tag": "0010_popular_only_and_useful_trivia",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790961693270,
+      "tag": "0011_bilingual_easy_story",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790961907056,
+      "tag": "0012_punch_dialogue_easier",
+      "breakpoints": true
+    }
+  ]
+}
