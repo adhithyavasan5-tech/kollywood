@@ -5,6 +5,7 @@ import { Avatar, Backdrop, Logo } from "@/components/Backdrop";
 import { PosterWall } from "@/components/PosterWall";
 import { TmdbAttribution } from "@/components/TmdbAttribution";
 import { useEffect } from "react";
+import { Linkedin, Instagram, Github, CodeXml } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/home")({
   head: () => ({
@@ -54,8 +55,10 @@ function Home() {
     <main className="relative isolate flex min-h-[100svh] flex-col px-4 pb-24 pt-5 sm:px-8 sm:pb-24 sm:pt-6">
       <Backdrop />
       <PosterWall />
+
       <header className="fade-slide mx-auto flex w-full max-w-5xl items-center justify-between">
         <Logo size="sm" />
+
         <button
           onClick={async () => {
             await supabase.auth.signOut();
@@ -74,6 +77,7 @@ function Home() {
         >
           Tonight’s show
         </p>
+
         <h1
           className="rise-in mt-3 max-w-3xl font-display text-[clamp(2.65rem,13vw,4.5rem)] font-extrabold leading-[0.98] text-foreground"
           style={{ animationDelay: "160ms" }}
@@ -82,12 +86,14 @@ function Home() {
           <br />
           <span className="text-foreground">Name that movie.</span>
         </h1>
+
         <p
           className="fade-slide mt-4 max-w-xl text-base leading-relaxed text-foreground/70 sm:text-lg"
           style={{ animationDelay: "280ms" }}
         >
           Create a private room or enter a friend’s code.
         </p>
+
         <div className="mt-10 grid max-w-2xl gap-4 sm:grid-cols-2">
           <Link
             to="/create"
@@ -97,6 +103,7 @@ function Home() {
           >
             Create room <kbd className="shortcut-hint">C</kbd>
           </Link>
+
           <Link
             to="/join"
             aria-keyshortcuts="J"
@@ -118,13 +125,23 @@ function Home() {
             aria-label="Change avatar in Profile Settings"
             className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <Avatar name={profile?.username ?? "?"} actor={profile?.avatar} gold size={56} />
+            <Avatar
+              name={profile?.username ?? "?"}
+              actor={profile?.avatar}
+              gold
+              size={56}
+            />
           </Link>
+
           <div className="min-w-0">
-            <div className="truncate font-display text-xl">{profile?.username ?? "…"}</div>
+            <div className="truncate font-display text-xl">
+              {profile?.username ?? "…"}
+            </div>
+
             <div className="truncate font-mono text-xs text-muted-foreground">
               ID · {profile?.player_id ?? "…"}
             </div>
+
             <Link
               to="/profile"
               className="mt-1 inline-block text-[11px] font-bold uppercase text-primary hover:underline"
@@ -132,6 +149,7 @@ function Home() {
               Profile settings
             </Link>
           </div>
+
           <div className="col-span-2 grid grid-cols-2 gap-4 border-t border-border pt-4 sm:col-span-1 sm:contents sm:border-0 sm:pt-0">
             <Stat label="Total games" value={profile?.total_games} />
             <Stat label="Total points" value={profile?.total_points} gold />
@@ -139,20 +157,77 @@ function Home() {
         </div>
       </section>
 
-      <footer className="fade-slide mt-auto pt-16 pb-4" style={{ animationDelay: "680ms" }}>
+      <footer
+        className="fade-slide mt-auto pt-16 pb-4"
+        style={{ animationDelay: "680ms" }}
+      >
         <div className="mx-auto w-full max-w-4xl">
           <div className="glow-line w-full" />
+
           <div className="footer-beat mt-4 flex flex-col items-center gap-1 text-center">
+
             <p className="font-display text-[11px] font-bold uppercase tracking-[0.35em] text-foreground/85">
               Fan-made · Made by Adhithyavasan
             </p>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+
+            {/* Social Media Icons */}
+            <div className="mt-5 flex items-center justify-center gap-4">
+
+              {/* LinkedIn */}
+              <a
+                href="https://www.linkedin.com/in/adhithyavasan-r"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="LinkedIn"
+                title="LinkedIn"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-300 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <Linkedin size={19} strokeWidth={1.8} />
+              </a>
+
+              {/* Instagram */}
+              <a
+                href="#"
+                aria-label="Instagram"
+                title="Instagram"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-300 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <Instagram size={19} strokeWidth={1.8} />
+              </a>
+
+              {/* GitHub */}
+              <a
+                href="https://github.com/adhithyavasan5-tech"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="GitHub"
+                title="GitHub"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-300 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <Github size={19} strokeWidth={1.8} />
+              </a>
+
+              {/* LeetCode */}
+              <a
+                href="#"
+                aria-label="LeetCode"
+                title="LeetCode"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-300 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <CodeXml size={19} strokeWidth={1.8} />
+              </a>
+
+            </div>
+
+            <p className="mt-3 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               © {new Date().getFullYear()} Kollywood Clash · Not affiliated with any studio or
               production house
             </p>
+
             <div className="mt-1">
               <TmdbAttribution />
             </div>
+
           </div>
         </div>
       </footer>
@@ -174,7 +249,10 @@ function Stat({
       <div className={`font-mono text-3xl font-bold ${gold ? "text-primary" : ""}`}>
         {value ?? "–"}
       </div>
-      <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{label}</div>
+
+      <div className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+        {label}
+      </div>
     </div>
   );
 }
