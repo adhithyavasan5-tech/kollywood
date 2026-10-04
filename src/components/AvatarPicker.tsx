@@ -12,6 +12,7 @@ export function AvatarPicker({
   compact?: boolean;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
   const current = Math.max(
     0,
     ACTORS.findIndex((a) => a.key === value),
@@ -24,9 +25,13 @@ export function AvatarPicker({
         : e.key === "ArrowLeft" || e.key === "ArrowUp"
           ? -1
           : 0;
+
     if (!delta) return;
+
     e.preventDefault();
+
     const next = (i + delta + ACTORS.length) % ACTORS.length;
+
     onChange(ACTORS[next]!.key);
     refs.current[next]?.focus();
   }
@@ -35,10 +40,16 @@ export function AvatarPicker({
     <div
       role="radiogroup"
       aria-label="Choose your actor avatar"
-      className={`grid gap-2 sm:gap-3 ${compact ? "grid-cols-4" : "grid-cols-2 sm:grid-cols-4"}`}
+      className={`grid gap-2 sm:gap-3 ${
+        compact
+          ? "grid-cols-4"
+          : "grid-cols-2 sm:grid-cols-4"
+      }`}
     >
       {ACTORS.map((a, i) => {
         const selected = a.key === value;
+        const photo = actorPhoto(a.key);
+
         return (
           <button
             key={a.key}
@@ -51,25 +62,53 @@ export function AvatarPicker({
             tabIndex={i === current ? 0 : -1}
             onClick={() => onChange(a.key)}
             onKeyDown={(e) => onKey(e, i)}
-            className={`touch-control group relative aspect-[3/4] overflow-hidden rounded-lg border-2 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${selected ? "scale-[1.02] border-primary shadow-[var(--shadow-gold)]" : "border-border opacity-80 hover:opacity-100"}`}
+            className={`touch-control group relative aspect-[3/4] overflow-hidden rounded-lg border-2 bg-card text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              selected
+                ? "scale-[1.02] border-primary shadow-[var(--shadow-gold)]"
+                : "border-border opacity-80 hover:opacity-100"
+            }`}
           >
-        <img
-  src={actorPhoto(a.key)!}
-  alt=""
-  width={185}
-  height={278}
-  loading="lazy"
-  decoding="async"
-  referrerPolicy="no-referrer"
-  className="absolute inset-0 h-full w-full object-cover object-top"
-/>
-            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-background via-background/85 to-transparent p-1.5 pt-6 sm:p-2 sm:pt-8">
+            {photo ? (
+              <img
+                src={photo}
+                alt={a.name}
+                width={185}
+                height={278}
+                loading="eager"
+                decoding="async"
+                referrerPolicy="no-referrer"
+                className="absolute inset-0 h-full w-full object-cover object-top"
+                onError={(e) => {
+                  console.error(
+                    `Failed to load actor image: ${a.name}`,
+                    photo,
+                  );
+
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center p-2 text-center">
+                <span className="font-display text-xs text-muted-foreground">
+                  {a.name}
+                </span>
+              </div>
+            )}
+
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+
+            <span className="pointer-events-none absolute inset-x-0 bottom-0 p-1.5 pt-6 sm:p-2 sm:pt-8">
               <span
-                className={`block font-display font-bold leading-tight ${compact ? "text-[9px] sm:text-[11px]" : "text-[11px] sm:text-xs"}`}
+                className={`block font-display font-bold leading-tight text-white ${
+                  compact
+                    ? "text-[9px] sm:text-[11px]"
+                    : "text-[11px] sm:text-xs"
+                }`}
               >
                 {a.name}
               </span>
             </span>
+
             {selected && (
               <span
                 aria-hidden
