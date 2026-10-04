@@ -187,7 +187,7 @@ function Home() {
 
               {/* Instagram */}
               <a
-                href="#"
+                href="https://www.instagram.com/hht__adhithya__18?stkn=emR0and4ZXB3cWY0"
                 aria-label="Instagram"
                 title="Instagram"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-300 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary"
@@ -209,7 +209,7 @@ function Home() {
 
               {/* LeetCode */}
               <a
-                href="#"
+                href="https://leetcode.com/u/Adhithyavasan/"
                 aria-label="LeetCode"
                 title="LeetCode"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-border/60 text-muted-foreground transition-all duration-300 hover:scale-110 hover:border-primary hover:bg-primary/10 hover:text-primary"
