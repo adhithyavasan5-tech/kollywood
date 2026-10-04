@@ -249,3 +249,111 @@ export async function runTmdbSync() {
     throw e;
   }
 }
+export async function backfillMissingMoviePosters() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: movies, error } = await supabaseAdmin
+    .from("movies")
+    .select("id, title, year")
+    .or("poster_path.is.null,poster_path.eq.")
+    .order("id");
+
+  if (error) {
+    throw new Error(`Failed to load missing posters: ${error.message}`);
+  }
+
+  if (!movies || movies.length === 0) {
+    return {
+      total: 0,
+      updated: 0,
+      failed: 0,
+      message: "No movies are missing posters.",
+    };
+  }
+
+  let updated = 0;
+  let failed = 0;
+
+  for (const movie of movies) {
+    try {
+      const search = await tmdb<{
+        results: {
+          id: number;
+          title: string;
+          original_title: string;
+          release_date: string;
+          poster_path: string | null;
+          backdrop_path: string | null;
+          overview: string;
+        }[];
+      }>("/search/movie", {
+        query: movie.title,
+        year: String(movie.year),
+        include_adult: "false",
+      });
+
+      const candidates = search.results ?? [];
+
+      const exact = candidates.find((item) => {
+        const itemYear = item.release_date
+          ? Number(item.release_date.slice(0, 4))
+          : null;
+
+        return (
+          itemYear === movie.year &&
+          item.poster_path
+        );
+      });
+
+      const match = exact ?? candidates.find((item) => item.poster_path);
+
+      if (!match) {
+        console.log(`❌ No poster found: ${movie.title} (${movie.year})`);
+        failed++;
+        continue;
+      }
+
+      const { error: updateError } = await supabaseAdmin
+        .from("movies")
+        .update({
+          tmdb_id: match.id,
+          poster_path: match.poster_path,
+          backdrop_path: match.backdrop_path,
+          original_title: match.original_title,
+          release_date: match.release_date || null,
+          overview: match.overview || null,
+        })
+        .eq("id", movie.id);
+
+      if (updateError) {
+        console.log(
+          `❌ Database update failed: ${movie.title}: ${updateError.message}`,
+        );
+        failed++;
+        continue;
+      }
+
+      console.log(
+        `✅ Poster added: ${movie.title} → TMDB ${match.id}`,
+      );
+
+      updated++;
+
+      // Small delay to be gentle with TMDB.
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    } catch (error) {
+      console.log(
+        `❌ Failed: ${movie.title}`,
+        error instanceof Error ? error.message : error,
+      );
+
+      failed++;
+    }
+  }
+
+  return {
+    total: movies.length,
+    updated,
+    failed,
+  };
+}

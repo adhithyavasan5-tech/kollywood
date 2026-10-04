@@ -26,10 +26,20 @@ export const Route = createFileRoute("/api/public/tmdb-sync")({
           const denied = await authenticateCronRequest(request);
           if (denied) return denied;
         }
-        const { runTmdbSync, runTmdbRecent, TmdbError } = await import("@/lib/tmdb-sync.server");
-        const body = (await request.json().catch(() => ({}))) as { mode?: unknown };
+       const {
+  runTmdbSync,
+  runTmdbRecent,
+  backfillMissingMoviePosters,
+  TmdbError,
+} = await import("@/lib/tmdb-sync.server");
+const body = (await request.json().catch(() => ({}))) as {
+  mode?: unknown;
+};
         try {
           const { runClueRewrite } = await import("@/lib/clue-rewrite.server");
+          if (body.mode === "poster-backfill") {
+  return Response.json(await backfillMissingMoviePosters());
+}
           if (body.mode === "clues") return Response.json(await runClueRewrite());
           if (daily || body.mode === "daily") {
             const recent = await runTmdbRecent();
