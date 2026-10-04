@@ -817,3 +817,39 @@ html[data-motion="reduced"] {
     backdrop-filter: none;
   }
 }
+@keyframes posterScroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes posterScrollReverse {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
+.poster-scroll {
+  animation: posterScroll 220s linear infinite;
+  will-change: transform;
+}
+
+.poster-scroll-reverse {
+  animation: posterScrollReverse 220s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-scroll,
+  .poster-scroll-reverse {
+    animation: none;
+  }
+}

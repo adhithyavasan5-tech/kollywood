@@ -14,7 +14,7 @@ function Poster({ movie }: { movie: ShowcaseMovie }) {
       params={{ id: String(movie.id) }}
       tabIndex={-1}
       aria-label={`${movie.title} details`}
-      className="relative block aspect-[2/3] w-28 shrink-0 overflow-hidden rounded-md sm:w-36"
+      className="relative block aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-lg sm:w-40 md:w-44 lg:w-48"
     >
       <img
         src={url}
@@ -24,13 +24,13 @@ function Poster({ movie }: { movie: ShowcaseMovie }) {
         className="h-full w-full object-cover"
       />
 
-      <div className="pointer-events-none absolute inset-0 bg-black/20" />
+      <div className="pointer-events-none absolute inset-0 bg-black/25" />
     </Link>
   );
 }
 
 export function PosterWall() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["showcase"],
     queryFn: () => listShowcase(),
     staleTime: 60_000,
@@ -38,32 +38,53 @@ export function PosterWall() {
 
   const movies = data?.movies ?? [];
 
-  console.log("POSTER WALL MOVIES:", movies.length);
-  console.log("POSTER WALL DATA:", data);
-  console.log("POSTER WALL ERROR:", error);
-
   return (
-    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+    <div className="pointer-events-none fixed inset-0 z-0 h-screen w-screen overflow-hidden">
       {movies.length > 0 && (
-        <div
-          className="
-            absolute
-            -inset-x-32
-            -inset-y-40
-            grid
-            grid-cols-6
-            gap-3
-            opacity-35
-            sm:grid-cols-8
-            lg:grid-cols-10
-          "
-        >
-          {movies.map((movie) => (
-            <Poster
-              key={`${movie.id}-${movie.poster_path}`}
-              movie={movie}
-            />
-          ))}
+        <div className="absolute inset-0 flex h-full w-full flex-col justify-center gap-4 overflow-hidden">
+
+          {/* ROW 1 */}
+          <div className="poster-scroll flex w-max gap-4">
+            {[...movies, ...movies].map((movie, index) => (
+              <Poster
+                key={`row1-${movie.id}-${index}`}
+                movie={movie}
+              />
+            ))}
+          </div>
+
+          {/* ROW 2 */}
+          <div className="poster-scroll-reverse flex w-max gap-4">
+            {[...movies, ...movies].map((movie, index) => (
+              <Poster
+                key={`row2-${movie.id}-${index}`}
+                movie={movie}
+              />
+            ))}
+          </div>
+
+          {/* ROW 3 */}
+          <div className="poster-scroll flex w-max gap-4">
+            {[...movies, ...movies].map((movie, index) => (
+              <Poster
+                key={`row3-${movie.id}-${index}`}
+                movie={movie}
+              />
+            ))}
+          </div>
+
+          {/* ROW 4 */}
+          <div className="poster-scroll-reverse flex w-max gap-4">
+            {[...movies, ...movies].map((movie, index) => (
+              <Poster
+                key={`row4-${movie.id}-${index}`}
+                movie={movie}
+              />
+            ))}
+          </div>
+
+          {/* DARK OVERLAY */}
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/65 via-background/45 to-background/75" />
         </div>
       )}
 
@@ -74,18 +95,6 @@ export function PosterWall() {
           </span>
         </div>
       )}
-
-      <div
-        className="
-          pointer-events-none
-          absolute
-          inset-0
-          bg-gradient-to-b
-          from-background/60
-          via-background/45
-          to-background/80
-        "
-      />
     </div>
   );
 }
