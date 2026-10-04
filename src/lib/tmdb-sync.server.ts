@@ -249,111 +249,266 @@ export async function runTmdbSync() {
     throw e;
   }
 }
-export async function backfillMissingMoviePosters() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+export async function backfillMissingMoviePosters()export async function backfillMissingMoviePosters() {
+  const { supabaseAdmin } = await import(
+    "@/integrations/supabase/client.server"
+  );
+
+  /**
+   * IMPORTANT:
+   * This function ONLY updates existing movies.
+   *
+   * It NEVER:
+   * - inserts movies
+   * - upserts movies
+   * - calls tmdb_upsert_movies
+   * - changes the number of movies
+   */
 
   const { data: movies, error } = await supabaseAdmin
     .from("movies")
-    .select("id, title, year")
+    .select("id, title, year, tmdb_id")
     .or("poster_path.is.null,poster_path.eq.")
     .order("id");
 
   if (error) {
-    throw new Error(`Failed to load missing posters: ${error.message}`);
-  }
-
-  if (!movies || movies.length === 0) {
-    return {
-      total: 0,
-      updated: 0,
-      failed: 0,
-      message: "No movies are missing posters.",
-    };
+    throw new Error(`Failed to load movies: ${error.message}`);
   }
 
   let updated = 0;
+  let notFound = 0;
   let failed = 0;
 
-  for (const movie of movies) {
+  const missing: Array<{
+    id: number;
+    title: string;
+    year: number | null;
+    reason: string;
+  }> = [];
+
+  /**
+   * Normalize titles so small differences such as
+   * punctuation, spacing and case do not prevent matching.
+   */
+  const normalizeTitle = (value: string) =>
+    value
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^\p{L}\p{N}]+/gu, "")
+      .trim();
+
+  for (const movie of movies ?? []) {
     try {
-      const search = await tmdb<{
-        results: {
-          id: number;
-          title: string;
-          original_title: string;
-          release_date: string;
-          poster_path: string | null;
-          backdrop_path: string | null;
-          overview: string;
-        }[];
-      }>("/search/movie", {
-        query: movie.title,
-        year: String(movie.year),
-        include_adult: "false",
-      });
+      let exactMatch: any = null;
 
-      const candidates = search.results ?? [];
+      /**
+       * ---------------------------------------------------------
+       * STEP 1: If this movie already has a TMDB ID,
+       * use that exact TMDB movie first.
+       * ---------------------------------------------------------
+       */
+      if (movie.tmdb_id) {
+        try {
+          const details = await tmdb<any>(
+            `/movie/${movie.tmdb_id}`,
+            {
+              language: "en-US",
+            }
+          );
 
-      const exact = candidates.find((item) => {
-        const itemYear = item.release_date
-          ? Number(item.release_date.slice(0, 4))
-          : null;
+          if (details?.poster_path) {
+            const detailsYear = details.release_date
+              ? Number(String(details.release_date).slice(0, 4))
+              : null;
 
-        return (
-          itemYear === movie.year &&
-          item.poster_path
+            const sameTitle =
+              normalizeTitle(details.title ?? "") ===
+              normalizeTitle(movie.title ?? "");
+
+            const sameYear =
+              !movie.year ||
+              !detailsYear ||
+              detailsYear === movie.year;
+
+            if (sameTitle && sameYear) {
+              exactMatch = details;
+            }
+          }
+        } catch {
+          // Existing TMDB ID failed.
+          // Continue with title search below.
+        }
+      }
+
+      /**
+       * ---------------------------------------------------------
+       * STEP 2: Search TMDB using title + year.
+       * ---------------------------------------------------------
+       */
+      if (!exactMatch) {
+        const search = await tmdb<any>("/search/movie", {
+          query: movie.title,
+          year: movie.year ? String(movie.year) : undefined,
+          include_adult: "false",
+          language: "en-US",
+        });
+
+        const results = Array.isArray(search?.results)
+          ? search.results
+          : [];
+
+        /**
+         * Exact normalized title + exact year.
+         */
+        exactMatch = results.find((item: any) => {
+          const resultTitle = normalizeTitle(item.title ?? "");
+
+          const resultYear = item.release_date
+            ? Number(String(item.release_date).slice(0, 4))
+            : null;
+
+          return (
+            resultTitle === normalizeTitle(movie.title ?? "") &&
+            (!movie.year || resultYear === movie.year) &&
+            Boolean(item.poster_path)
+          );
+        });
+
+        /**
+         * Exact normalized title.
+         * Used when TMDB release year differs slightly.
+         */
+        if (!exactMatch) {
+          exactMatch = results.find((item: any) => {
+            const resultTitle = normalizeTitle(item.title ?? "");
+
+            return (
+              resultTitle === normalizeTitle(movie.title ?? "") &&
+              Boolean(item.poster_path)
+            );
+          });
+        }
+
+        /**
+         * Title match + nearby year.
+         * This handles cases where release dates differ by
+         * one year between databases.
+         */
+        if (!exactMatch && movie.year) {
+          exactMatch = results.find((item: any) => {
+            const resultTitle = normalizeTitle(item.title ?? "");
+
+            const resultYear = item.release_date
+              ? Number(String(item.release_date).slice(0, 4))
+              : null;
+
+            return (
+              resultTitle === normalizeTitle(movie.title ?? "") &&
+              resultYear !== null &&
+              Math.abs(resultYear - movie.year) <= 1 &&
+              Boolean(item.poster_path)
+            );
+          });
+        }
+      }
+
+      /**
+       * ---------------------------------------------------------
+       * NO SAFE MATCH
+       *
+       * DO NOT randomly select the first TMDB result.
+       * ---------------------------------------------------------
+       */
+      if (!exactMatch?.poster_path) {
+        notFound++;
+
+        missing.push({
+          id: movie.id,
+          title: movie.title,
+          year: movie.year,
+          reason: "No safe TMDB poster match found",
+        });
+
+        console.log(
+          `[POSTER] ⚠ No safe match: ${movie.id} - ${movie.title}`
         );
-      });
 
-      const match = exact ?? candidates.find((item) => item.poster_path);
-
-      if (!match) {
-        console.log(`❌ No poster found: ${movie.title} (${movie.year})`);
-        failed++;
         continue;
       }
 
+      /**
+       * ---------------------------------------------------------
+       * CRITICAL SECTION
+       *
+       * UPDATE EXISTING ROW ONLY.
+       *
+       * .eq("id", movie.id)
+       * guarantees that the poster belongs to the
+       * existing movie row.
+       *
+       * THERE IS NO INSERT.
+       * THERE IS NO UPSERT.
+       * ---------------------------------------------------------
+       */
       const { error: updateError } = await supabaseAdmin
         .from("movies")
         .update({
-          tmdb_id: match.id,
-          poster_path: match.poster_path,
-          backdrop_path: match.backdrop_path,
-          original_title: match.original_title,
-          release_date: match.release_date || null,
-          overview: match.overview || null,
+          poster_path: exactMatch.poster_path,
+          backdrop_path: exactMatch.backdrop_path ?? null,
+          tmdb_id: exactMatch.id ?? movie.tmdb_id ?? null,
+          original_title: exactMatch.original_title ?? null,
+          release_date: exactMatch.release_date || null,
+          overview: exactMatch.overview ?? null,
         })
         .eq("id", movie.id);
 
       if (updateError) {
-        console.log(
-          `❌ Database update failed: ${movie.title}: ${updateError.message}`,
-        );
         failed++;
+
+        console.error(
+          `[POSTER] ✗ Update failed: ${movie.id} - ${movie.title}`,
+          updateError
+        );
+
         continue;
       }
 
-      console.log(
-        `✅ Poster added: ${movie.title} → TMDB ${match.id}`,
-      );
-
       updated++;
 
-      // Small delay to be gentle with TMDB.
-      await new Promise((resolve) => setTimeout(resolve, 250));
-    } catch (error) {
       console.log(
-        `❌ Failed: ${movie.title}`,
-        error instanceof Error ? error.message : error,
+        `[POSTER] ✓ ${updated}/${movies.length} - ${movie.title}`
       );
 
+      /**
+       * Small delay to avoid hitting TMDB too aggressively.
+       */
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    } catch (error) {
       failed++;
+
+      console.error(
+        `[POSTER] ✗ Failed: ${movie.id} - ${movie.title}`,
+        error
+      );
     }
   }
 
   return {
-    total: movies.length,
+    mode: "poster-backfill",
+
+    requested: movies?.length ?? 0,
+
     updated,
+
+    notFound,
+
     failed,
+
+    remaining: Math.max(
+      0,
+      (movies?.length ?? 0) - updated
+    ),
+
+    missing,
   };
 }
