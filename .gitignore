@@ -25,3 +25,5 @@ Thumbs.db
 
 .output/
 .wrangler/
+.vercel
+.env*
