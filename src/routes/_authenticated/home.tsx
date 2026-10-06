@@ -55,21 +55,45 @@ function Home() {
     <main className="relative isolate flex min-h-[100svh] flex-col px-4 pb-24 pt-5 sm:px-8 sm:pb-24 sm:pt-6">
       <Backdrop />
       <PosterWall />
+<header className="fade-slide mx-auto flex w-full max-w-5xl items-center justify-between">
+  <div className="relative flex items-center">
+    {/* Kollywood Clash Logo */}
+    <Logo size="sm" />
 
-      <header className="fade-slide mx-auto flex w-full max-w-5xl items-center justify-between">
-        <Logo size="sm" />
+    {/* Selected Actor — appears attached to the logo */}
+    {profile?.avatar && (
+      <Link
+        to="/profile"
+        aria-label={`Open profile - ${profile.avatar}`}
+        className="group relative -ml-2 z-10 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="rounded-full border-2 border-primary bg-background p-0.5 shadow-lg shadow-primary/30 transition-transform duration-200 group-hover:scale-110">
+          <Avatar
+            name={profile?.username ?? "Player"}
+            actor={profile.avatar}
+            gold
+            size={42}
+          />
+        </div>
 
-        <button
-          onClick={async () => {
-            await supabase.auth.signOut();
-            navigate({ to: "/" });
-          }}
-          className="touch-control min-h-11 px-2 text-xs uppercase text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          Sign out
-        </button>
-      </header>
+        {/* Actor name */}
+        <span className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-background/95 px-2 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary opacity-0 shadow-md transition-opacity group-hover:opacity-100">
+          {profile.avatar}
+        </span>
+      </Link>
+    )}
+  </div>
 
+  <button
+    onClick={async () => {
+      await supabase.auth.signOut();
+      navigate({ to: "/" });
+    }}
+    className="touch-control min-h-11 px-2 text-xs uppercase text-muted-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+  >
+    Sign out
+  </button>
+</header>
       <section className="mx-auto mt-10 w-full max-w-4xl sm:mt-20 lg:mt-24">
         <p
           className="fade-slide font-display text-xs font-bold uppercase text-foreground/80"
