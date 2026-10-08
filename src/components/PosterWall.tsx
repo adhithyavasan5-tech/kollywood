@@ -6,29 +6,49 @@ import { tmdbImage } from "@/lib/tmdb";
 function Poster({ movie }: { movie: ShowcaseMovie }) {
   const url = tmdbImage(movie.poster_path, "w342");
 
-  if (!url) return null;
-
   return (
     <Link
       to="/movie/$id"
       params={{ id: String(movie.id) }}
       tabIndex={-1}
       aria-label={`${movie.title} details`}
-      className="relative block aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-lg sm:w-40 md:w-44 lg:w-48"
+      className="relative block aspect-[2/3] w-32 shrink-0 overflow-hidden rounded-lg bg-slate-900 sm:w-40 md:w-44 lg:w-48"
     >
-      <img
-        src={url}
-        alt=""
-        loading="eager"
-        decoding="async"
-        className="h-full w-full object-cover"
-      />
+      {url ? (
+        <img
+          src={url}
+          alt={movie.title}
+          loading="eager"
+          decoding="async"
+          className="h-full w-full object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+
+            const fallback = e.currentTarget.parentElement?.querySelector(
+              ".poster-fallback"
+            ) as HTMLElement | null;
+
+            if (fallback) {
+              fallback.style.display = "flex";
+            }
+          }}
+        />
+      ) : null}
+
+      {/* Movie name shown when poster is missing or fails */}
+      <div
+        className="poster-fallback absolute inset-0 items-center justify-center bg-slate-900 p-3 text-center"
+        style={{ display: url ? "none" : "flex" }}
+      >
+        <span className="font-display text-sm font-bold uppercase tracking-wider text-white sm:text-base">
+          {movie.title}
+        </span>
+      </div>
 
       <div className="pointer-events-none absolute inset-0 bg-black/25" />
     </Link>
   );
 }
-
 export function PosterWall() {
   const { data, isLoading } = useQuery({
     queryKey: ["showcase"],

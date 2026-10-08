@@ -286,19 +286,385 @@ function Lobby({
   meId: string;
 }) {
   const [busy, setBusy] = useState(false);
-  const slots = Array.from({ length: room.max_players }, (_, i) => players[i]);
+
+  const isTeamBattle = room.game_mode === "team";
+
+  /*
+   * Team Battle players
+   */
+  const teamA = players.filter((p) => p.team === "team_1");
+  const teamB = players.filter((p) => p.team === "team_2");
+
+  const teamSize = room.team_size ?? 0;
+
+  const teamAFull = teamA.length >= teamSize;
+  const teamBFull = teamB.length >= teamSize;
+
+  /*
+   * Team Battle can start only when BOTH teams
+   * have reached the selected team size.
+   */
+  const teamsReady = teamAFull && teamBFull;
+
+  /*
+   * Classic room:
+   * Existing behaviour remains unchanged.
+   */
+  const classicReady = players.length >= 2;
+
+  const canStart = isTeamBattle ? teamsReady : classicReady;
+
   async function start() {
+    if (!canStart || busy) return;
+
     setBusy(true);
-    const { error } = await supabase.rpc("start_game", { p_room: room.id });
+
+    const { error } = await supabase.rpc("start_game", {
+      p_room: room.id,
+    });
+
     setBusy(false);
-    if (error) toast.error(errMsg(error));
+
+    if (error) {
+      toast.error(errMsg(error));
+    }
   }
+
+  async function copyCode(value: string, message: string) {
+    try {
+      await navigator.clipboard?.writeText(value);
+      toast.success(message);
+    } catch {
+      toast.error("Could not copy the code.");
+    }
+  }
+
+  /*
+   * ---------------- TEAM BATTLE LOBBY ----------------
+   */
+  if (isTeamBattle) {
+    const teamAJoinCode = `${room.code}-A`;
+    const teamBJoinCode = `${room.code}-B`;
+
+    return (
+      <section className="mx-auto mt-8 max-w-5xl animate-fade-in px-4 text-center sm:mt-10">
+        {/* Header */}
+        <p className="font-display text-xs tracking-[0.5em] text-accent">
+          TEAM BATTLE
+        </p>
+
+        <div className="mt-3 font-mono text-5xl font-bold tracking-[0.25em] text-gold sm:text-7xl">
+          {room.code}
+        </div>
+
+        <p className="mt-3 text-sm text-muted-foreground">
+          {teamSize} vs {teamSize} · {players.length} / {room.max_players} players
+        </p>
+
+        {/* Main room code */}
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          <button
+            onClick={() => copyCode(room.code, "Main room code copied")}
+            className="btn-outline-gold px-5 py-2 text-xs"
+          >
+            Copy room code
+          </button>
+        </div>
+
+        {/* Team Join Codes */}
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          {/* TEAM A CODE */}
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4">
+            <p className="font-display text-[10px] font-bold uppercase tracking-[0.3em] text-destructive">
+              🔴 Team A Join Code
+            </p>
+
+            <p className="mt-2 font-mono text-2xl font-black tracking-wider text-destructive">
+              {teamAJoinCode}
+            </p>
+
+            <button
+              onClick={() =>
+                copyCode(teamAJoinCode, "Team A code copied")
+              }
+              className="btn-outline-gold mt-3 px-4 py-2 text-xs"
+            >
+              Copy Team A Code
+            </button>
+          </div>
+
+          {/* TEAM B CODE */}
+          <div className="rounded-xl border border-primary/40 bg-primary/5 p-4">
+            <p className="font-display text-[10px] font-bold uppercase tracking-[0.3em] text-primary">
+              🔵 Team B Join Code
+            </p>
+
+            <p className="mt-2 font-mono text-2xl font-black tracking-wider text-primary">
+              {teamBJoinCode}
+            </p>
+
+            <button
+              onClick={() =>
+                copyCode(teamBJoinCode, "Team B code copied")
+              }
+              className="btn-outline-gold mt-3 px-4 py-2 text-xs"
+            >
+              Copy Team B Code
+            </button>
+          </div>
+        </div>
+
+        {/* Teams */}
+        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+          {/* ================= TEAM A ================= */}
+          <div className="overflow-hidden rounded-2xl border-2 border-destructive/50 bg-background/60 shadow-xl">
+            <div className="border-b border-destructive/30 bg-destructive/10 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-left">
+                  <p className="text-2xl">🔴</p>
+
+                  <h2 className="mt-1 font-display text-2xl font-black uppercase text-destructive">
+                    {room.team_1_name || "TEAM A"}
+                  </h2>
+
+                  <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Team A
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2">
+                  <span className="font-mono text-xl font-bold text-destructive">
+                    {teamA.length}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    / {teamSize}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4">
+              {teamA.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-destructive/30 p-8">
+                  <p className="text-3xl opacity-40">👤</p>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Waiting for Team A players…
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {teamA.map((p) => (
+                    <li
+                      key={p.user_id}
+                      className="flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3"
+                    >
+                      {/* RED TEAM RING */}
+                      <div className="rounded-full ring-4 ring-destructive/50">
+                        <Avatar
+                          name={p.username}
+                          actor={p.avatar}
+                          gold={p.user_id === meId}
+                          size={48}
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate font-display font-bold">
+                          {p.username}
+                          {p.user_id === meId && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (you)
+                            </span>
+                          )}
+                        </p>
+
+                        {p.player_id && (
+                          <p className="truncate font-mono text-[10px] text-muted-foreground">
+                            ID · {p.player_id}
+                          </p>
+                        )}
+                      </div>
+
+                      {p.user_id === room.host_id && (
+                        <span className="rounded-full bg-primary/15 px-2 py-1 font-display text-[9px] tracking-widest text-primary">
+                          HOST
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Team A status */}
+              <div className="mt-4">
+                {teamAFull ? (
+                  <p className="rounded-lg bg-success/10 py-2 text-xs font-bold uppercase tracking-widest text-success">
+                    ✓ Team A Ready
+                  </p>
+                ) : (
+                  <p className="rounded-lg bg-background/50 py-2 text-xs uppercase tracking-widest text-muted-foreground">
+                    Need {teamSize - teamA.length} more player
+                    {teamSize - teamA.length === 1 ? "" : "s"}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* ================= TEAM B ================= */}
+          <div className="overflow-hidden rounded-2xl border-2 border-primary/50 bg-background/60 shadow-xl">
+            <div className="border-b border-primary/30 bg-primary/10 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-left">
+                  <p className="text-2xl">🔵</p>
+
+                  <h2 className="mt-1 font-display text-2xl font-black uppercase text-primary">
+                    {room.team_2_name || "TEAM B"}
+                  </h2>
+
+                  <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    Team B
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-primary/30 bg-primary/10 px-4 py-2">
+                  <span className="font-mono text-xl font-bold text-primary">
+                    {teamB.length}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    / {teamSize}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4">
+              {teamB.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-primary/30 p-8">
+                  <p className="text-3xl opacity-40">👤</p>
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Waiting for Team B players…
+                  </p>
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {teamB.map((p) => (
+                    <li
+                      key={p.user_id}
+                      className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-3"
+                    >
+                      {/* BLUE TEAM RING */}
+                      <div className="rounded-full ring-4 ring-primary/50">
+                        <Avatar
+                          name={p.username}
+                          actor={p.avatar}
+                          gold={p.user_id === meId}
+                          size={48}
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="truncate font-display font-bold">
+                          {p.username}
+                          {p.user_id === meId && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (you)
+                            </span>
+                          )}
+                        </p>
+
+                        {p.player_id && (
+                          <p className="truncate font-mono text-[10px] text-muted-foreground">
+                            ID · {p.player_id}
+                          </p>
+                        )}
+                      </div>
+
+                      {p.user_id === room.host_id && (
+                        <span className="rounded-full bg-primary/15 px-2 py-1 font-display text-[9px] tracking-widest text-primary">
+                          HOST
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {/* Team B status */}
+              <div className="mt-4">
+                {teamBFull ? (
+                  <p className="rounded-lg bg-success/10 py-2 text-xs font-bold uppercase tracking-widest text-success">
+                    ✓ Team B Ready
+                  </p>
+                ) : (
+                  <p className="rounded-lg bg-background/50 py-2 text-xs uppercase tracking-widest text-muted-foreground">
+                    Need {teamSize - teamB.length} more player
+                    {teamSize - teamB.length === 1 ? "" : "s"}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Start status */}
+        <div className="mt-7">
+          {teamsReady ? (
+            <p className="font-display text-sm font-bold uppercase tracking-[0.3em] text-success">
+              ✓ Both teams are ready
+            </p>
+          ) : (
+            <p className="animate-pulse font-display text-sm uppercase tracking-[0.3em] text-muted-foreground">
+              Waiting for both teams to fill…
+            </p>
+          )}
+        </div>
+
+        {/* Host Start */}
+        {isHost ? (
+          <button
+            onClick={start}
+            disabled={busy || !teamsReady}
+            className="btn-gold mt-6 w-full max-w-sm py-5"
+          >
+            {!teamsReady
+              ? `Need ${teamSize} vs ${teamSize} players`
+              : busy
+                ? "Lights…"
+                : "Start Team Battle"}
+          </button>
+        ) : (
+          <p className="mt-6 animate-pulse font-display tracking-[0.3em] text-muted-foreground">
+            Waiting for the host…
+          </p>
+        )}
+      </section>
+    );
+  }
+
+  /*
+   * ---------------- CLASSIC LOBBY ----------------
+   *
+   * This is your existing Classic UI.
+   * Nothing changes for 2/3/4/5/10 player rooms.
+   */
+  const slots = Array.from(
+    { length: room.max_players },
+    (_, i) => players[i],
+  );
+
   return (
     <section className="mx-auto mt-10 max-w-2xl animate-fade-in text-center">
-      <p className="font-display text-xs tracking-[0.5em] text-accent">SHOW ROOM</p>
+      <p className="font-display text-xs tracking-[0.5em] text-accent">
+        SHOW ROOM
+      </p>
+
       <div className="mt-4 font-mono text-6xl font-bold tracking-[0.3em] text-gold sm:text-7xl">
         {room.code}
       </div>
+
       <button
         onClick={() => {
           navigator.clipboard?.writeText(room.code);
@@ -308,32 +674,51 @@ function Lobby({
       >
         Copy room code
       </button>
+
       <div className="panel mt-10 p-5 text-left sm:p-6">
         <div className="mb-4 flex items-center justify-between">
-          <span className="font-display text-sm tracking-[0.3em] text-muted-foreground">CAST</span>
+          <span className="font-display text-sm tracking-[0.3em] text-muted-foreground">
+            CAST
+          </span>
+
           <span className="font-mono text-primary">
             {players.length} / {room.max_players} PLAYERS
           </span>
         </div>
+
         <ul className="space-y-2">
           {slots.map((p, i) => (
             <li
               key={i}
-              className={`flex items-center gap-3 rounded-lg border px-3 py-3 ${p ? "border-primary/25 bg-card" : "border-dashed border-border opacity-50"}`}
+              className={`flex items-center gap-3 rounded-lg border px-3 py-3 ${
+                p
+                  ? "border-primary/25 bg-card"
+                  : "border-dashed border-border opacity-50"
+              }`}
             >
               {p ? (
-                <Avatar name={p.username} actor={p.avatar} gold={p.user_id === meId} size={40} />
+                <Avatar
+                  name={p.username}
+                  actor={p.avatar}
+                  gold={p.user_id === meId}
+                  size={40}
+                />
               ) : (
                 <div className="h-10 w-10 rounded-full border border-dashed border-border" />
               )}
+
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{p ? p.username : "Waiting…"}</span>
+                <span className="block truncate font-semibold">
+                  {p ? p.username : "Waiting…"}
+                </span>
+
                 {p?.player_id && (
                   <span className="block truncate font-mono text-[10px] text-muted-foreground">
                     ID · {p.player_id}
                   </span>
                 )}
               </span>
+
               {p?.user_id === room.host_id && (
                 <span className="rounded-full bg-primary/15 px-2 py-0.5 font-display text-[10px] tracking-widest text-primary">
                   HOST
@@ -343,13 +728,18 @@ function Lobby({
           ))}
         </ul>
       </div>
+
       {isHost ? (
         <button
           onClick={start}
-          disabled={busy || players.length < 2}
+          disabled={busy || !classicReady}
           className="btn-gold mt-8 w-full max-w-sm py-5"
         >
-          {players.length < 2 ? "Need 2+ players" : busy ? "Lights…" : "Start game"}
+          {players.length < 2
+            ? "Need 2+ players"
+            : busy
+              ? "Lights…"
+              : "Start game"}
         </button>
       ) : (
         <p className="mt-8 animate-pulse font-display tracking-[0.3em] text-muted-foreground">
@@ -477,13 +867,14 @@ function Game({
           </>
         )}
       </div>
-      <Scoreboard
-        players={players}
-        meId={meId}
-        hostId={room.host_id}
-        eliminated={room.phase === "reveal" ? [] : eliminated}
-        active={room.answer_player_id}
-      />
+     <Scoreboard
+  players={players}
+  meId={meId}
+  hostId={room.host_id}
+  eliminated={room.phase === "reveal" ? [] : eliminated}
+  active={room.answer_player_id}
+  room={room}
+/>
     </section>
   );
 }
@@ -942,56 +1333,311 @@ function Scoreboard({
   hostId,
   eliminated,
   active,
+  room,
 }: {
   players: Player[];
   meId: string;
   hostId: string;
   eliminated: string[];
   active: string | null;
+  room: Room;
 }) {
-  const sorted = [...players].sort((a, b) => b.score - a.score);
-  const top = sorted[0]?.score;
-  return (
-    <aside className="panel h-fit p-4 sm:p-5 lg:sticky lg:top-4">
-      <p className="mb-3 font-display text-xs font-bold uppercase text-muted-foreground">
-        Live score
-      </p>
-      <ul className="space-y-2">
-        {sorted.map((p) => {
-          const lead = p.score === top && p.score > 0;
-          return (
-            <li
-              key={p.user_id}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 transition-all ${p.user_id === meId ? "bg-primary/10 ring-1 ring-primary/40" : "bg-background/40"} ${eliminated.includes(p.user_id) ? "opacity-40" : ""} ${active === p.user_id ? "ring-2 ring-destructive" : ""}`}
-            >
-              <Avatar name={p.username} actor={p.avatar} size={34} gold={lead} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold">
-                  {p.username}
-                  {p.user_id === hostId && (
-                    <span className="ml-1.5 text-[9px] tracking-widest text-primary">HOST</span>
-                  )}
-                </span>
-                {p.player_id && (
-                  <span className="block truncate font-mono text-[10px] text-muted-foreground">
-                    ID · {p.player_id}
-                  </span>
-                )}
-              </span>
-              <span
-                key={p.score}
-                className={`animate-scale-in font-mono text-xl font-bold ${lead ? "text-primary" : ""}`}
-              >
-                {p.score}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-    </aside>
-  );
-}
+  const isTeamBattle = room.game_mode === "team";
 
+  /*
+   * CLASSIC MODE
+   * Keep existing scoreboard behaviour.
+   */
+  if (!isTeamBattle) {
+    const sorted = [...players].sort((a, b) => b.score - a.score);
+
+    return (
+      <div className="panel p-4 sm:p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <span className="font-display text-xs tracking-[0.3em] text-muted-foreground">
+            SCOREBOARD
+          </span>
+
+          <span className="font-mono text-xs text-muted-foreground">
+            {players.length} PLAYERS
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {sorted.map((p, i) => {
+            const isMe = p.user_id === meId;
+            const isActive = p.user_id === active;
+            const isEliminated = eliminated.includes(p.user_id);
+
+            return (
+              <div
+                key={p.user_id}
+                className={`flex items-center gap-3 rounded-xl border p-3 transition-all ${
+                  isActive
+                    ? "border-gold/60 bg-gold/10"
+                    : isMe
+                      ? "border-primary/30 bg-primary/5"
+                      : "border-border bg-card/50"
+                } ${isEliminated ? "opacity-40" : ""}`}
+              >
+                <span className="w-6 text-center font-mono text-xs text-muted-foreground">
+                  {i + 1}
+                </span>
+
+                <Avatar
+                  name={p.username}
+                  actor={p.avatar}
+                  gold={isMe}
+                  size={40}
+                />
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">
+                    {p.username}
+                    {isMe && (
+                      <span className="ml-2 text-[10px] text-primary">
+                        YOU
+                      </span>
+                    )}
+                  </p>
+
+                  {p.user_id === hostId && (
+                    <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                      HOST
+                    </p>
+                  )}
+                </div>
+
+                <span className="font-mono text-lg font-bold text-gold">
+                  {p.score}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * TEAM BATTLE
+   */
+  const teamA = [...players]
+    .filter((p) => p.team === "team_1")
+    .sort((a, b) => b.score - a.score);
+
+  const teamB = [...players]
+    .filter((p) => p.team === "team_2")
+    .sort((a, b) => b.score - a.score);
+
+  function TeamPlayer({
+    player,
+    team,
+  }: {
+    player: Player;
+    team: "team_1" | "team_2";
+  }) {
+    const isMe = player.user_id === meId;
+    const isActive = player.user_id === active;
+    const isEliminated = eliminated.includes(player.user_id);
+
+    const red = team === "team_1";
+
+    return (
+      <div
+        className={`flex items-center gap-3 rounded-xl border p-3 transition-all ${
+          red
+            ? "border-destructive/30 bg-destructive/5"
+            : "border-primary/30 bg-primary/5"
+        } ${
+          isActive
+            ? red
+              ? "ring-2 ring-destructive/60"
+              : "ring-2 ring-primary/60"
+            : ""
+        } ${isEliminated ? "opacity-40" : ""}`}
+      >
+        <div
+          className={`rounded-full ${
+            red ? "ring-4 ring-destructive/50" : "ring-4 ring-primary/50"
+          }`}
+        >
+          <Avatar
+            name={player.username}
+            actor={player.avatar}
+            gold={isMe}
+            size={42}
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-semibold">
+            {player.username}
+
+            {isMe && (
+              <span className="ml-2 text-[10px] text-primary">
+                YOU
+              </span>
+            )}
+          </p>
+
+          {player.user_id === hostId && (
+            <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
+              HOST
+            </p>
+          )}
+        </div>
+
+        <span
+          className={`font-mono text-xl font-black ${
+            red ? "text-destructive" : "text-primary"
+          }`}
+        >
+          {player.score > 0 ? "+" : ""}
+          {player.score}
+        </span>
+      </div>
+    );
+  }
+
+ return (
+  <div className="space-y-5">
+    {/* TEAM HEADERS */}
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+      {/* 🔴 TEAM A */}
+      <div className="rounded-2xl border-2 border-destructive/50 bg-destructive/5 p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-destructive/15 text-2xl">
+              🔴
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground">
+                TEAM A
+              </p>
+
+              <h3 className="truncate font-display text-lg font-black uppercase text-destructive sm:text-xl">
+                {room.team_1_name || "TEAM A"}
+              </h3>
+
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {teamA.length} / {room.team_size ?? 0} PLAYERS
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+              SCORE
+            </p>
+
+            <p className="font-mono text-3xl font-black text-destructive">
+              {room.team_1_score > 0 ? "+" : ""}
+              {room.team_1_score}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 🔵 TEAM B */}
+      <div className="rounded-2xl border-2 border-primary/50 bg-primary/5 p-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-primary/15 text-2xl">
+              🔵
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-muted-foreground">
+                TEAM B
+              </p>
+
+              <h3 className="truncate font-display text-lg font-black uppercase text-primary sm:text-xl">
+                {room.team_2_name || "TEAM B"}
+              </h3>
+
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {teamB.length} / {room.team_size ?? 0} PLAYERS
+              </p>
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+              SCORE
+            </p>
+
+            <p className="font-mono text-3xl font-black text-primary">
+              {room.team_2_score > 0 ? "+" : ""}
+              {room.team_2_score}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* PLAYER CARDS — ALWAYS UNDER THEIR OWN TEAM */}
+    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+
+      {/* 🔴 TEAM A PLAYERS */}
+      <section className="min-w-0">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-destructive" />
+
+          <span className="truncate font-display text-xs font-bold uppercase tracking-[0.2em] text-destructive">
+            {room.team_1_name || "TEAM A"}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {teamA.length > 0 ? (
+            teamA.map((player) => (
+              <TeamPlayer
+                key={player.user_id}
+                player={player}
+                team="team_1"
+              />
+            ))
+          ) : (
+            <div className="rounded-xl border border-dashed border-destructive/30 p-4 text-center text-xs text-muted-foreground">
+              No players
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 🔵 TEAM B PLAYERS */}
+      <section className="min-w-0">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+
+          <span className="truncate font-display text-xs font-bold uppercase tracking-[0.2em] text-primary">
+            {room.team_2_name || "TEAM B"}
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          {teamB.length > 0 ? (
+            teamB.map((player) => (
+              <TeamPlayer
+                key={player.user_id}
+                player={player}
+                team="team_2"
+              />
+            ))
+          ) : (
+            <div className="rounded-xl border border-dashed border-primary/30 p-4 text-center text-xs text-muted-foreground">
+              No players
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  </div>
+);
+}
 /* ---------------- FINAL ---------------- */
 function Final({
   room,
@@ -1004,22 +1650,347 @@ function Final({
   isHost: boolean;
   meId: string;
 }) {
-  const sorted = [...players].sort((a, b) => b.score - a.score);
   const [busy, setBusy] = useState(false);
   const [music, setMusic] = useState(true);
 
+  const isTeamBattle = room.game_mode === "team";
+
+  const sorted = [...players].sort((a, b) => b.score - a.score);
+
+  const teamA = [...players]
+    .filter((p) => p.team === "team_1")
+    .sort((a, b) => b.score - a.score);
+
+  const teamB = [...players]
+    .filter((p) => p.team === "team_2")
+    .sort((a, b) => b.score - a.score);
+
+  const teamAScore = room.team_1_score ?? 0;
+  const teamBScore = room.team_2_score ?? 0;
+
+  const teamAWins = teamAScore > teamBScore;
+  const teamBWins = teamBScore > teamAScore;
+  const teamDraw = teamAScore === teamBScore;
+
   useEffect(() => {
     if (!music) return;
+
     const stop = startMassBgm();
+
     return stop;
   }, [music]);
 
   async function again() {
     setBusy(true);
-    const { error } = await supabase.rpc("start_game", { p_room: room.id });
+
+    const { error } = await supabase.rpc("start_game", {
+      p_room: room.id,
+    });
+
     setBusy(false);
-    if (error) toast.error(errMsg(error));
+
+    if (error) {
+      toast.error(errMsg(error));
+    }
   }
+
+  /*
+   * =========================
+   * TEAM BATTLE FINAL
+   * =========================
+   */
+  if (isTeamBattle) {
+    return (
+      <section className="relative mx-auto mt-8 max-w-5xl px-4 pb-10 text-center">
+        <Confetti count={120} />
+
+        <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-[70vh] w-96 -translate-x-1/2 spotlight bg-gradient-to-b from-primary/30 to-transparent blur-2xl" />
+
+        <p className="rise-in font-display text-sm tracking-[0.6em] text-accent">
+          TEAM BATTLE COMPLETE
+        </p>
+
+        <h1 className="slam mt-3 font-display text-4xl font-black text-shimmer sm:text-6xl">
+          THE SHOW IS OVER
+        </h1>
+
+        <button
+          onClick={() => setMusic((m) => !m)}
+          className="btn-outline-gold mt-5 px-4 py-2 text-[10px]"
+        >
+          {music ? "Celebration music on" : "Play celebration music"}
+        </button>
+
+        {/* ================= WINNER ================= */}
+        <div className="mt-8">
+          {teamDraw ? (
+            <>
+              <p className="font-display text-sm uppercase tracking-[0.35em] text-accent">
+                MATCH RESULT
+              </p>
+
+              <h2 className="slam mt-2 font-display text-4xl font-black text-gold sm:text-5xl">
+                IT'S A DRAW!
+              </h2>
+
+              <p className="mt-2 text-muted-foreground">
+                Both teams finished with the same score.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-display text-sm uppercase tracking-[0.35em] text-accent">
+                CHAMPIONS
+              </p>
+
+              <h2
+                className={`slam mt-2 font-display text-4xl font-black sm:text-5xl ${
+                  teamAWins ? "text-destructive" : "text-primary"
+                }`}
+              >
+                {teamAWins
+                  ? room.team_1_name || "TEAM A"
+                  : room.team_2_name || "TEAM B"}
+              </h2>
+
+              <p className="mt-2 text-muted-foreground">
+                {teamAWins ? "Team A takes the victory!" : "Team B takes the victory!"}
+              </p>
+            </>
+          )}
+        </div>
+
+        {/* ================= TEAM SCORE ================= */}
+        <div className="mt-10 grid gap-5 md:grid-cols-2">
+          {/* TEAM A */}
+          <div
+            className={`rounded-3xl border-2 p-6 transition-all ${
+              teamAWins
+                ? "border-destructive bg-destructive/10 shadow-xl"
+                : "border-destructive/40 bg-destructive/5"
+            }`}
+          >
+            <div className="text-4xl">🔴</div>
+
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+              TEAM A
+            </p>
+
+            <h2 className="mt-1 font-display text-2xl font-black uppercase text-destructive sm:text-3xl">
+              {room.team_1_name || "TEAM A"}
+            </h2>
+
+            <p className="mt-5 font-mono text-6xl font-black text-destructive">
+              {teamAScore}
+            </p>
+
+            <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              TEAM POINTS
+            </p>
+
+            {teamAWins && (
+              <div className="mt-4 rounded-full bg-destructive/15 py-2 font-display text-xs font-black uppercase tracking-widest text-destructive">
+                🏆 WINNER
+              </div>
+            )}
+          </div>
+
+          {/* TEAM B */}
+          <div
+            className={`rounded-3xl border-2 p-6 transition-all ${
+              teamBWins
+                ? "border-primary bg-primary/10 shadow-xl"
+                : "border-primary/40 bg-primary/5"
+            }`}
+          >
+            <div className="text-4xl">🔵</div>
+
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">
+              TEAM B
+            </p>
+
+            <h2 className="mt-1 font-display text-2xl font-black uppercase text-primary sm:text-3xl">
+              {room.team_2_name || "TEAM B"}
+            </h2>
+
+            <p className="mt-5 font-mono text-6xl font-black text-primary">
+              {teamBScore}
+            </p>
+
+            <p className="mt-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              TEAM POINTS
+            </p>
+
+            {teamBWins && (
+              <div className="mt-4 rounded-full bg-primary/15 py-2 font-display text-xs font-black uppercase tracking-widest text-primary">
+                🏆 WINNER
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ================= DRAW ================= */}
+        {teamDraw && (
+          <div className="mt-5 rounded-2xl border border-gold/40 bg-gold/5 p-4">
+            <p className="font-display text-sm font-bold uppercase tracking-widest text-gold">
+              🤝 MATCH DRAW
+            </p>
+          </div>
+        )}
+
+        {/* ================= PLAYER SCORES ================= */}
+        <div className="mt-8 grid gap-5 md:grid-cols-2">
+          {/* TEAM A PLAYERS */}
+          <div className="panel p-5 text-left">
+            <div className="mb-4 flex items-center gap-2">
+              <span>🔴</span>
+
+              <h3 className="font-display text-sm font-black uppercase tracking-[0.2em] text-destructive">
+                {room.team_1_name || "TEAM A"}
+              </h3>
+            </div>
+
+            <div className="space-y-2">
+              {teamA.map((p, index) => (
+                <div
+                  key={p.user_id}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-3 ${
+                    index === 0
+                      ? "bg-destructive/10 ring-1 ring-destructive/30"
+                      : "bg-background/40"
+                  }`}
+                >
+                  <span className="w-5 text-center font-mono text-xs text-muted-foreground">
+                    {index + 1}
+                  </span>
+
+                  <div className="rounded-full ring-2 ring-destructive/50">
+                    <Avatar
+                      name={p.username}
+                      actor={p.avatar}
+                      gold={p.user_id === meId}
+                      size={42}
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">
+                      {p.username}
+
+                      {p.user_id === meId && (
+                        <span className="ml-2 text-[10px] text-primary">
+                          YOU
+                        </span>
+                      )}
+                    </p>
+
+                    {p.user_id === room.host_id && (
+                      <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                        HOST
+                      </p>
+                    )}
+                  </div>
+
+                  <span className="font-mono text-xl font-black text-destructive">
+                    {p.score > 0 ? "+" : ""}
+                    {p.score}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* TEAM B PLAYERS */}
+          <div className="panel p-5 text-left">
+            <div className="mb-4 flex items-center gap-2">
+              <span>🔵</span>
+
+              <h3 className="font-display text-sm font-black uppercase tracking-[0.2em] text-primary">
+                {room.team_2_name || "TEAM B"}
+              </h3>
+            </div>
+
+            <div className="space-y-2">
+              {teamB.map((p, index) => (
+                <div
+                  key={p.user_id}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-3 ${
+                    index === 0
+                      ? "bg-primary/10 ring-1 ring-primary/30"
+                      : "bg-background/40"
+                  }`}
+                >
+                  <span className="w-5 text-center font-mono text-xs text-muted-foreground">
+                    {index + 1}
+                  </span>
+
+                  <div className="rounded-full ring-2 ring-primary/50">
+                    <Avatar
+                      name={p.username}
+                      actor={p.avatar}
+                      gold={p.user_id === meId}
+                      size={42}
+                    />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">
+                      {p.username}
+
+                      {p.user_id === meId && (
+                        <span className="ml-2 text-[10px] text-primary">
+                          YOU
+                        </span>
+                      )}
+                    </p>
+
+                    {p.user_id === room.host_id && (
+                      <p className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                        HOST
+                      </p>
+                    )}
+                  </div>
+
+                  <span className="font-mono text-xl font-black text-primary">
+                    {p.score > 0 ? "+" : ""}
+                    {p.score}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ================= ACTIONS ================= */}
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          {isHost ? (
+            <button
+              onClick={again}
+              disabled={busy || players.length < 2}
+              className="btn-gold"
+            >
+              {busy ? "Lights…" : "Play again"}
+            </button>
+          ) : (
+            <p className="self-center text-sm text-muted-foreground">
+              Host can start a new show
+            </p>
+          )}
+
+          <Link to="/home" className="btn-outline-gold">
+            Home
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  /*
+   * =========================
+   * CLASSIC FINAL
+   * =========================
+   */
+
   const podium = [sorted[1], sorted[0], sorted[2]];
   const heights = ["h-24", "h-36", "h-16"];
   const order = [1, 0, 2];
@@ -1027,11 +1998,17 @@ function Final({
   return (
     <section className="relative mx-auto mt-8 max-w-2xl text-center">
       <Confetti count={90} />
+
       <div className="pointer-events-none absolute -top-24 left-1/2 -z-10 h-[70vh] w-72 -translate-x-1/2 spotlight bg-gradient-to-b from-primary/30 to-transparent blur-2xl" />
-      <p className="rise-in font-display text-sm tracking-[0.6em] text-accent">GAME OVER</p>
+
+      <p className="rise-in font-display text-sm tracking-[0.6em] text-accent">
+        GAME OVER
+      </p>
+
       <h1 className="slam mt-3 font-display text-4xl font-black text-shimmer sm:text-6xl">
         THE SHOW IS OVER
       </h1>
+
       <button
         onClick={() => setMusic((m) => !m)}
         className="btn-outline-gold mt-5 px-4 py-2 text-[10px]"
@@ -1045,9 +2022,14 @@ function Final({
             <div
               key={p.user_id}
               className="rise-in flex flex-col items-center"
-              style={{ animationDelay: `${0.4 + (2 - idx) * 0.25}s` }}
+              style={{
+                animationDelay: `${0.4 + (2 - idx) * 0.25}s`,
+              }}
             >
-              {order[idx] === 0 && <span className="float-soft mb-1 text-3xl">👑</span>}
+              {order[idx] === 0 && (
+                <span className="float-soft mb-1 text-3xl">👑</span>
+              )}
+
               <div className={order[idx] === 0 ? "float-soft" : ""}>
                 <Avatar
                   name={p.username}
@@ -1056,14 +2038,25 @@ function Final({
                   gold={order[idx] === 0}
                 />
               </div>
-              <p className="mt-2 w-full truncate font-display text-sm font-bold">{p.username}</p>
+
+              <p className="mt-2 w-full truncate font-display text-sm font-bold">
+                {p.username}
+              </p>
+
               <p
-                className={`font-mono text-2xl font-bold ${order[idx] === 0 ? "text-primary" : ""}`}
+                className={`font-mono text-2xl font-bold ${
+                  order[idx] === 0 ? "text-primary" : ""
+                }`}
               >
                 {p.score}
               </p>
+
               <div
-                className={`mt-2 w-full rounded-t-lg border border-b-0 ${order[idx] === 0 ? "border-primary bg-gradient-to-b from-primary/40 to-primary/5" : "border-border bg-gradient-to-b from-secondary/60 to-card"} ${heights[idx]} grid place-items-center font-display text-2xl font-black text-foreground/70`}
+                className={`mt-2 w-full rounded-t-lg border border-b-0 ${
+                  order[idx] === 0
+                    ? "border-primary bg-gradient-to-b from-primary/40 to-primary/5"
+                    : "border-border bg-gradient-to-b from-secondary/60 to-card"
+                } ${heights[idx]} grid place-items-center font-display text-2xl font-black text-foreground/70`}
               >
                 {(order[idx] ?? 0) + 1}
               </div>
@@ -1079,39 +2072,70 @@ function Final({
           {sorted.map((p, i) => (
             <li
               key={p.user_id}
-              className={`rise-in flex items-center gap-4 rounded-xl px-4 py-3 ${i === 0 ? "bg-primary/10 ring-1 ring-primary" : "bg-background/40"}`}
-              style={{ animationDelay: `${1.2 + i * 0.15}s` }}
+              className={`rise-in flex items-center gap-4 rounded-xl px-4 py-3 ${
+                i === 0
+                  ? "bg-primary/10 ring-1 ring-primary"
+                  : "bg-background/40"
+              }`}
+              style={{
+                animationDelay: `${1.2 + i * 0.15}s`,
+              }}
             >
-              <Avatar name={p.username} actor={p.avatar} size={i === 0 ? 48 : 38} gold={i === 0} />
+              <Avatar
+                name={p.username}
+                actor={p.avatar}
+                size={i === 0 ? 48 : 38}
+                gold={i === 0}
+              />
+
               <span className="min-w-0 flex-1 text-left">
                 <span className="block truncate font-display text-lg">
                   {p.username}
+
                   {p.user_id === meId && (
-                    <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      (you)
+                    </span>
                   )}
                 </span>
+
                 {p.player_id && (
                   <span className="block truncate font-mono text-[10px] text-muted-foreground">
                     ID · {p.player_id}
                   </span>
                 )}
               </span>
-              <span className={`font-mono text-2xl font-bold ${i === 0 ? "text-primary" : ""}`}>
+
+              <span
+                className={`font-mono text-2xl font-bold ${
+                  i === 0 ? "text-primary" : ""
+                }`}
+              >
                 {p.score}
-                <span className="ml-1 text-xs text-muted-foreground">PTS</span>
+                <span className="ml-1 text-xs text-muted-foreground">
+                  PTS
+                </span>
               </span>
             </li>
           ))}
         </ul>
       </div>
+
       <div className="mt-8 grid gap-3 sm:grid-cols-2">
         {isHost ? (
-          <button onClick={again} disabled={busy || players.length < 2} className="btn-gold">
-            Play again
+          <button
+            onClick={again}
+            disabled={busy || players.length < 2}
+            className="btn-gold"
+          >
+            {busy ? "Lights…" : "Play again"}
           </button>
         ) : (
-          <p className="self-center text-sm text-muted-foreground">Host can start a new show</p>
+          <p className="self-center text-sm text-muted-foreground">
+            Host can start a new show
+          </p>
         )}
+
         <Link to="/home" className="btn-outline-gold">
           Home
         </Link>
